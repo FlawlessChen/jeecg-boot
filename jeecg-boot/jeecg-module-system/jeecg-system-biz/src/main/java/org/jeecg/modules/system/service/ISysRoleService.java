@@ -76,4 +76,6 @@ public interface ISysRoleService extends IService<SysRole> {
     void checkAdminRoleRejectDel(String ids);
 
     List<String> queryRoleCodeByUsernameAndTenant(String username, String tenantIdHeader);
+
+    List<SysRole> queryallNoByTenant();
 }

@@ -325,8 +325,10 @@ public class SysRoleController {
 	@RequestMapping(value = "/queryallNoByTenant", method = RequestMethod.GET)
 	public Result<List<SysRole>> queryallNoByTenant() {
 		Result<List<SysRole>> result = new Result<>();
-		LambdaQueryWrapper<SysRole> query = new LambdaQueryWrapper<SysRole>();
-		List<SysRole> list = sysRoleService.list(query);
+		//因为了list封装了多租户查询，且只能从mapper文件进行忽略，所以重写查询
+		//LambdaQueryWrapper<SysRole> query = new LambdaQueryWrapper<SysRole>();
+		//List<SysRole> list = sysRoleService.list(query);
+		List<SysRole> list = sysRoleService.queryallNoByTenant();
 		if(list==null||list.size()<=0) {
 			result.error500("未找到角色信息");
 		}else {
@@ -537,13 +539,13 @@ public class SysRoleController {
 	 * @return
 	 */
 	@RequestMapping(value = "/queryTreeListForRoleByTenant", method = RequestMethod.GET)
-	public Result<Map<String,Object>> queryTreeListForRoleByTenant(@RequestParam(name = "roleId", required = true) String roleId, HttpServletRequest request) {
+	public Result<Map<String,Object>> queryTreeListForRoleByTenant(@RequestParam(name = "roleId", required = true) String roleId,@RequestParam(name = "tenantId", required = true) String tenantId, HttpServletRequest request) {
 		Result<Map<String,Object>> result = new Result<>();
 		// 全部权限ids
 		List<String> ids = new ArrayList<>();
 
 		try {
-			String roleTenantId = request.getHeader("X-Tenant-Id");
+			String roleTenantId = tenantId;
 
 			// 查询 sys_tenant_pack 中符合条件的 id 列表
 			List<String> tenantPackIds = sysTenantPackService.lambdaQuery()

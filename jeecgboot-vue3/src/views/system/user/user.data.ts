@@ -200,7 +200,10 @@ export const formSchema: FormSchema[] = [
       labelField: 'roleName',
       valueField: 'id',
       immediate: false,
+      placeholder: '请前往角色管理中关联角色'
     },
+      //表单禁用
+      dynamicDisabled: true,
   },
   {
     label: '所属部门',
@@ -244,7 +247,10 @@ export const formSchema: FormSchema[] = [
       labelField: 'name',
       valueField: 'id',
       immediate: false,
+      placeholder: '请前往角色管理中关联租户'
     },
+    //表单禁用
+    dynamicDisabled: true,
   },
   {
     label: '身份',

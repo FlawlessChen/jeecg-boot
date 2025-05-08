@@ -15,6 +15,8 @@ public class SysUserRoleVO implements Serializable{
 
 	/**部门id*/
 	private String roleId;
+	/**租户id*/
+	private String tenantId;
 	/**对应的用户id集合*/
 	private List<String> userIdList;
 

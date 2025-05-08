@@ -120,7 +120,8 @@ public class SysUserController {
 		QueryWrapper<SysUser> queryWrapper = QueryGenerator.initQueryWrapper(user, req.getParameterMap());
         //------------------------------------------------------------------------------------------------
         //是否开启系统管理模块的多租户数据隔离【SAAS多租户模式】
-        if (MybatisPlusSaasConfig.OPEN_SYSTEM_TENANT_CONTROL) {
+        //2025年5月6日17:54:58 此处屏蔽掉多租户模式
+        /*if (MybatisPlusSaasConfig.OPEN_SYSTEM_TENANT_CONTROL) {
             String tenantId = oConvertUtils.getString(TenantContext.getTenant(), "-1");
             List<String> userIds = userTenantService.getUserIdsByTenantId(Integer.valueOf(tenantId));
             if (oConvertUtils.listIsNotEmpty(userIds)) {
@@ -128,7 +129,7 @@ public class SysUserController {
             }else{
                 queryWrapper.eq("id", "通过租户查询不到任何用户");
             }
-        }
+        }*/
         //------------------------------------------------------------------------------------------------
         return sysUserService.queryPageList(req, queryWrapper, pageSize, pageNo);
 	}
@@ -293,6 +294,7 @@ public class SysUserController {
         return result;
     }
 
+    // 此处查询不走租户逻辑--待改造  2025年5月7日10:18:14
     @RequiresPermissions("system:user:queryUserRole")
     @RequestMapping(value = "/queryUserRole", method = RequestMethod.GET)
     public Result<List<String>> queryUserRole(@RequestParam(name = "userid", required = true) String userid) {
@@ -665,6 +667,7 @@ public class SysUserController {
         //TODO 判断当前操作的角色是当前登录租户下的
         try {
             String sysRoleId = sysUserRoleVO.getRoleId();
+            String tenantId  = sysUserRoleVO.getTenantId();
             for(String sysUserId:sysUserRoleVO.getUserIdList()) {
                 SysUserRole sysUserRole = new SysUserRole(sysUserId,sysRoleId);
                 QueryWrapper<SysUserRole> queryWrapper = new QueryWrapper<SysUserRole>();
@@ -672,6 +675,16 @@ public class SysUserController {
                 SysUserRole one = sysUserRoleService.getOne(queryWrapper);
                 if(one==null){
                     sysUserRoleService.save(sysUserRole);
+                    //将所选择的人员同步到sys_user_tenant表中sysUserRole.userId为userId,tentantId为tentantId
+                    if(oConvertUtils.isNotEmpty(tenantId)){
+                        SysUserTenant sysUserTenant = new SysUserTenant();
+                        sysUserTenant.setUserId(sysUserRole.getUserId());
+                        sysUserTenant.setTenantId(Integer.valueOf(tenantId));
+                        sysUserTenant.setCreateTime(new Date());
+                        sysUserTenant.setStatus("1");
+                        userTenantService.save(sysUserTenant);
+                    }
+
                 }
 
             }
@@ -693,13 +706,18 @@ public class SysUserController {
     @RequiresPermissions("system:user:deleteRole")
     @RequestMapping(value = "/deleteUserRole", method = RequestMethod.DELETE)
     public Result<SysUserRole> deleteUserRole(@RequestParam(name="roleId") String roleId,
-                                                    @RequestParam(name="userId",required=true) String userId
+                                                    @RequestParam(name="userId",required=true) String userId,
+                                              @RequestParam(name = "tenantId") String tenantId
     ) {
         Result<SysUserRole> result = new Result<SysUserRole>();
         try {
             QueryWrapper<SysUserRole> queryWrapper = new QueryWrapper<SysUserRole>();
             queryWrapper.eq("role_id", roleId).eq("user_id",userId);
             sysUserRoleService.remove(queryWrapper);
+            //同步删除sys_user_tenant表中数据，userIds为userId,tenantId为tenantId
+            QueryWrapper<SysUserTenant> queryWrapper1 = new QueryWrapper<SysUserTenant>();
+            queryWrapper1.eq("tenant_id", tenantId).eq("user_id",userId);
+            userTenantService.remove(queryWrapper1);
             result.success("删除成功!");
         }catch(Exception e) {
             log.error(e.getMessage(), e);
@@ -718,12 +736,17 @@ public class SysUserController {
     @RequestMapping(value = "/deleteUserRoleBatch", method = RequestMethod.DELETE)
     public Result<SysUserRole> deleteUserRoleBatch(
             @RequestParam(name="roleId") String roleId,
-            @RequestParam(name="userIds",required=true) String userIds) {
+            @RequestParam(name="userIds",required=true) String userIds,
+            @RequestParam(name = "tenantId") String tenantId){
         Result<SysUserRole> result = new Result<SysUserRole>();
         try {
             QueryWrapper<SysUserRole> queryWrapper = new QueryWrapper<SysUserRole>();
             queryWrapper.eq("role_id", roleId).in("user_id",Arrays.asList(userIds.split(",")));
             sysUserRoleService.remove(queryWrapper);
+            //同步删除sys_user_tenant表中数据，userIds为userId,tenantId为tenantId
+            QueryWrapper<SysUserTenant> queryWrapper1 = new QueryWrapper<SysUserTenant>();
+            queryWrapper1.eq("tenant_id", tenantId).in("user_id",Arrays.asList(userIds.split(",")));
+            userTenantService.remove(queryWrapper1);
             result.success("删除成功!");
         }catch(Exception e) {
             log.error(e.getMessage(), e);

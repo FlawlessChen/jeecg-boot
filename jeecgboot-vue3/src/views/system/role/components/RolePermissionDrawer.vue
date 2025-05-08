@@ -66,6 +66,7 @@
   //树的选中的节点信息
   const selectedKeys = ref([]);
   const roleId = ref('');
+  const tenantId = ref('');
   //树的实例
   const treeRef = ref(null);
   const loading = ref(false);
@@ -79,8 +80,9 @@
     await reset();
     setDrawerProps({ confirmLoading: false, loading: true });
     roleId.value = data.roleId;
+    tenantId.value = data.tenantId;
     //初始化数据
-    const roleResult = await queryTreeListForRoleByTenant({ roleId: unref(roleId) });
+    const roleResult = await queryTreeListForRoleByTenant({ roleId: unref(roleId), tenantId: unref(tenantId) });
     //const roleResult = await queryTreeListForRole();
     // update-begin--author:liaozhiyang---date:20240228---for：【QQYUN-8355】角色权限配置的菜单翻译
     treeData.value = translateTitle(roleResult.treeList);
@@ -97,7 +99,7 @@
     }
     // update-end--author:liaozhiyang---date:20240531---for：【TV360X-590】角色授权弹窗操作缓存
     //初始化角色菜单数据
-    const permResult = await queryRolePermission({ roleId: unref(roleId) });
+    const permResult = await queryRolePermission({ roleId: unref(roleId), tenantId: unref(tenantId) });
     checkedKeys.value = permResult;
     defaultCheckedKeys.value = permResult;
     setDrawerProps({ loading: false });
@@ -215,6 +217,7 @@
       roleId: unref(roleId),
       permissionIds: unref(getTree().getCheckedKeys()).join(','),
       lastpermissionIds: unref(defaultCheckedKeys).join(','),
+      tenantId: unref(tenantId),
     };
     //update-begin-author:taoyan date:2023-2-11 for: issues/352 VUE角色授权重复保存
     if(loading.value===false){
@@ -227,7 +230,7 @@
       closeDrawer();
     }else{
       // 没有关闭需要重新获取选中数据
-      const permResult = await queryRolePermission({ roleId: unref(roleId) });
+      const permResult = await queryRolePermission({ roleId: unref(roleId), tenantId: unref(tenantId) });
       defaultCheckedKeys.value = permResult;
     }
   }

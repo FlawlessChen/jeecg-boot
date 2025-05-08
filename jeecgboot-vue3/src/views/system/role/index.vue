@@ -133,7 +133,7 @@
    * 角色授权弹窗
    */
   function handlePerssion(record) {
-    openRolePermissionDrawer(true, { roleId: record.id });
+    openRolePermissionDrawer(true, { roleId: record.id, tenantId: record.tenantId });
   }
   /**
    * 首页配置弹窗

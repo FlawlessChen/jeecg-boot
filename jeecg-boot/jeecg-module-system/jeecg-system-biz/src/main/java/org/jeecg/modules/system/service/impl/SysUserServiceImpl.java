@@ -989,7 +989,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 					relationMapper.insert(relation);
 				}
             }
-        }else{
+        }//此处注销掉else获取当前租户的选项
+		/*else{
 			//是否开启系统管理模块的多租户数据隔离【SAAS多租户模式】
 			if (MybatisPlusSaasConfig.OPEN_SYSTEM_TENANT_CONTROL) {
 				//update-begin---author:wangshuai ---date:20230220  for：判断当前用户是否在当前租户里面，如果不存在在新增------------
@@ -1006,7 +1007,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 				}
 				//update-end---author:wangshuai ---date:20230220  for：判断当前用户是否在当前租户里面，如果不存在在新增------------
 			}
-		}
+		}*/
     }
 
     /**

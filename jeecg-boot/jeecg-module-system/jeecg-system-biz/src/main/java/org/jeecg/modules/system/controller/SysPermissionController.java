@@ -254,6 +254,10 @@ public class SysPermissionController {
 		try {
 			//直接获取当前用户不适用前端token
 			String tenantIdHeader = request.getHeader("X-Tenant-Id");
+            //如果tenantIdHeader为0或者空，直接输出请联系管理员分配租户
+            if (tenantIdHeader == null || tenantIdHeader.trim().isEmpty() || "0".equals(tenantIdHeader.trim())) {
+                return Result.error("请联系管理员分配租户！");
+            }
 			LoginUser loginUser = (LoginUser) SecurityUtils.getSubject().getPrincipal();
 			//todo 由于目前切换租户时，角色未变更，所以需要根据租户ID重新获取角色信息
 			List<String> roleCodes = sysRoleService.queryRoleCodeByUsernameAndTenant(loginUser.getUsername(), tenantIdHeader);
@@ -269,10 +273,7 @@ public class SysPermissionController {
 				return Result.error("请登录系统！");
 			}
 			// 获取当前用户的权限列表
-			//loginUser.setRoleCode("1005");
 			List<SysPermission> metaList = getPermissionsForUser(loginUser);
-			//List<SysPermission> metaList = sysPermissionService.list(query);
-
 			//----此处修改，用来展示前端页面的菜单显示----
 			//List<SysPermission> metaList = sysPermissionService.queryByUser(loginUser.getId());
 
@@ -423,11 +424,17 @@ public class SysPermissionController {
 		SysRole role = sysRoleService.lambdaQuery()
 				.eq(SysRole::getRoleCode, loginUser.getRoleCode())
 				.one();
-
+		if(role == null ){
+			throw new RuntimeException("请联系管理员分配角色！");
+		}
 		// 步骤2：根据角色ID获取角色权限
 		List<SysRolePermission> rolePermissions = sysRolePermissionService.list(
 				new QueryWrapper<SysRolePermission>().lambda().eq(SysRolePermission::getRoleId, role.getId())
 		);
+        // 👇 添加判断
+        if (rolePermissions == null || rolePermissions.isEmpty()) {
+            throw new RuntimeException("请联系管理员分配菜单！");
+        }
 		System.out.println("rolePermissions:" + rolePermissions);
 
 		// 步骤3：提取权限ID列表
@@ -441,6 +448,7 @@ public class SysPermissionController {
 				new QueryWrapper<SysPermission>()
 						.lambda()
 						.in(SysPermission::getId, permissionIds)  // 根据权限ID过滤
+						.orderByAsc(SysPermission::getSortNo)
 		);
 
 		return metaList;
@@ -623,17 +631,16 @@ public class SysPermissionController {
 	 * @return
 	 */
 	@RequestMapping(value = "/queryRolePermission", method = RequestMethod.GET)
-	public Result<List<String>> queryRolePermission(@RequestParam(name = "roleId", required = true) String roleId, HttpServletRequest request) {
+	public Result<List<String>> queryRolePermission(@RequestParam(name = "roleId", required = true) String roleId,@RequestParam(name = "tenantId", required = true) String tenantId,HttpServletRequest request) {
 		Result<List<String>> result = new Result<>();
 
-		// 获取当前登录人
-		LoginUser sysUser = (LoginUser) SecurityUtils.getSubject().getPrincipal();
-		String tenantIdHeader = request.getHeader("X-Tenant-Id");
+		String tenantIdHeader =tenantId;
 
 		if (tenantIdHeader == null) {
 			result.error500("请将该角色分配到套餐中");
 			return result;
 		}
+		//二次修改：考虑到新增角色时，菜单为空， 所以需要更改查询逻辑
 		try {
 			List<SysRolePermission> list = sysRolePermissionService.list(
 					new QueryWrapper<SysRolePermission>().lambda().eq(SysRolePermission::getRoleId, roleId)
@@ -664,9 +671,9 @@ public class SysPermissionController {
 			String roleId = json.getString("roleId");
 			String permissionIds = json.getString("permissionIds");
 			String lastPermissionIds = json.getString("lastpermissionIds");
-			//2025年4月29日15:51:32 需要清除一下脏数据，具体为，把lastPermissionIds的数据过滤为仅存在于当前套餐包里的permissionIds
+			//2025年4月29日15:51:32 需要清除一下脏数据，具体为，把intersectionIds的数据过滤为仅存在于当前套餐包里的permissionIds
 			//1.查询最大权限范围
-			String roleTenantId = request.getHeader("X-Tenant-Id");
+			String roleTenantId = json.getString("tenantId");
 			if (oConvertUtils.isEmpty(roleTenantId)) {
 				result.error500("请将该角色分配到套餐中");
 				return result;
@@ -705,16 +712,18 @@ public class SysPermissionController {
 			}
 			//4.ids修改为[1,2]的格式
 			String maxIds = String.join(",", ids);
-			//5.过滤掉lastPermissionIds中不在maxIds中的数据
-			// 计算 lastPermissionIds 和 maxIds 的交集
-			Set<String> permissionSet = new HashSet<>(Arrays.asList(permissionIds.split(",")));
+			//5.过滤掉intersectionIds中不在maxIds中的数据
+			// 计算 intersectionIds 和 maxIds 的交集
+			List<String> permissionList = Arrays.asList(permissionIds.split(","));
 			Set<String> maxIdsSet = new HashSet<>(Arrays.asList(maxIds.split(",")));
 
-			// 获取交集
-			permissionSet.retainAll(maxIdsSet);
+			// 按原顺序保留交集
+			List<String> intersectionList = permissionList.stream()
+					.filter(maxIdsSet::contains)
+					.collect(Collectors.toList());
 
-			// 将交集转换为字符串
-			String intersectionIds = String.join(",", permissionSet);
+			String intersectionIds = String.join(",", intersectionList);
+
 			// 根据 permissionIds 查询 SysPermission
 			LambdaQueryWrapper<SysPermission> query = new LambdaQueryWrapper<>();
 			query.eq(SysPermission::getDelFlag, CommonConstant.DEL_FLAG_0)

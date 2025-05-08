@@ -50,5 +50,8 @@
         WHERE su.username = #{username}
           and sr.tenant_id = #{tenantIdHeader}
     </select>
+    <select id="queryallNoByTenant" resultType="org.jeecg.modules.system.entity.SysRole">
+        select * from sys_role
+    </select>
 
 </mapper>

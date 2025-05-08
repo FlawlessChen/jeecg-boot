@@ -1,5 +1,7 @@
 import { FormSchema } from '/@/components/Table';
 import { isRoleExist } from './role.api';
+import { defHttp } from '/@/utils/http/axios';
+
 export const columns = [
   {
     title: '角色名称',
@@ -113,6 +115,28 @@ export const formSchema: FormSchema[] = [
           },
         },
       ];
+    },
+  },
+  //此处下拉选择租户管理中的租户，使用api查询 2025年5月6日09:42:10
+  {
+    label: '所属租户',
+    field: 'tenantId',
+    component: 'ApiSelect',
+    componentProps: {
+      //multiple: 多选；不填写为单选
+      mode: 'multiple',
+      //请求api,返回结果{ result: { records:[{'id':'1',name:'scott'},{'id':'2',name:'小张'}] }}
+      api: () => defHttp.get({ url: '/sys/tenant/list' }),
+      //数值转成String
+      numberToString: false,
+      //标题字段
+      labelField: 'name',
+      //值字段
+      valueField: 'id',
+      //请求参数
+      params: {},
+      //返回结果字段
+      resultField: 'records',
     },
   },
   {

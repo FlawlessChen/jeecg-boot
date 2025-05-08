@@ -48,8 +48,10 @@
   
   const checkedKeys = ref<Array<string | number>>([]);
   const roleId = ref('');
+  const tenantId = ref('');
   const [registerBaseDrawer, { setDrawerProps, closeDrawer }] = useDrawerInner(async (data) => {
     roleId.value = data.id;
+    tenantId.value = data.tenantId;
     setProps({ searchInfo: { roleId: data.id } });
     reload();
   });
@@ -137,14 +139,14 @@
    * 删除事件
    */
   async function handleDelete(record) {
-    await deleteUserRole({ userId: record.id, roleId: roleId.value }, reload);
+    await deleteUserRole({ userId: record.id, roleId: roleId.value, tenantId: tenantId.value}, reload);
   }
 
   /**
    * 批量删除事件
    */
   async function batchHandleDelete() {
-    await batchDeleteUserRole({ userIds: checkedKeys.value.join(','), roleId: roleId.value }, () => {
+    await batchDeleteUserRole({ userIds: checkedKeys.value.join(','), roleId: roleId.value, tenantId: tenantId.value }, () => {
       // update-begin--author:liaozhiyang---date:20240701---for：【TV360X-1655】批量取消关联之后清空选中记录
       reload();
       checkedKeys.value = [];
@@ -168,7 +170,7 @@
    * 添加已有用户
    */
   async function selectOk(val) {
-    await addUserRole({ roleId: roleId.value, userIdList: val }, reload);
+    await addUserRole({ roleId: roleId.value, tenantId: tenantId.value, userIdList: val }, reload);
   }
   /**
    * 操作栏

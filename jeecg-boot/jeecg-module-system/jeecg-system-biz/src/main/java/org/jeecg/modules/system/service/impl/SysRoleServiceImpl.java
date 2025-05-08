@@ -121,4 +121,9 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     public List<String> queryRoleCodeByUsernameAndTenant(String username, String tenantIdHeader) {
         return sysRoleMapper.queryRoleCodeByUsernameAndTenant(username,tenantIdHeader);
     }
+
+    @Override
+    public List<SysRole> queryallNoByTenant() {
+        return sysRoleMapper.queryallNoByTenant();
+    }
 }
