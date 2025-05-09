@@ -328,7 +328,7 @@ public class SysRoleController {
 		//因为了list封装了多租户查询，且只能从mapper文件进行忽略，所以重写查询
 		//LambdaQueryWrapper<SysRole> query = new LambdaQueryWrapper<SysRole>();
 		//List<SysRole> list = sysRoleService.list(query);
-		List<SysRole> list = sysRoleService.queryallNoByTenant();
+		List<SysRole> list = sysRoleService.queryallNoByTenant(null);
 		if(list==null||list.size()<=0) {
 			result.error500("未找到角色信息");
 		}else {
@@ -342,11 +342,11 @@ public class SysRoleController {
 	  * 校验角色编码唯一
 	 */
 	@RequestMapping(value = "/checkRoleCode", method = RequestMethod.GET)
-	public Result<Boolean> checkUsername(String id,String roleCode) {
+	public Result<Boolean> checkUsername(String id,String roleCode,String tenantId) {
 		Result<Boolean> result = new Result<>();
         //如果此参数为false则程序发生异常
 		result.setResult(true);
-		log.info("--验证角色编码是否唯一---id:"+id+"--roleCode:"+roleCode);
+		log.info("--验证角色编码是否唯一---id:"+id+"--roleCode:"+roleCode+"---tenantId:"+tenantId);
 		try {
 			SysRole role = null;
 			if(oConvertUtils.isNotEmpty(id)) {

@@ -265,7 +265,7 @@ public class SysPermissionController {
 			//roleCodes转为1,2的字符串
 			String roleCode = String.join(SymbolConstant.COMMA, roleCodes);
 			loginUser.setRoleCode(roleCode);
-			//现在只考虑单角色的情况，如果loginUser.getRoleCode有逗号，取第一个
+			//todo 现在只考虑单角色的情况，如果loginUser.getRoleCode有逗号，取第一个角色,后续考虑为取多角色的并集
 			if (loginUser.getRoleCode().contains(SymbolConstant.COMMA)) {
 				loginUser.setRoleCode(loginUser.getRoleCode().split(SymbolConstant.COMMA)[0]);
 			}

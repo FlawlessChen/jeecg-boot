@@ -211,4 +211,11 @@ public class SysUser implements Serializable {
      */
     @TableField(exist = false)
     private boolean izBindThird;
+
+    /*
+     * 所属角色role_names
+     */
+    @TableField(exist = false)
+    private String roleNames;
+
 }

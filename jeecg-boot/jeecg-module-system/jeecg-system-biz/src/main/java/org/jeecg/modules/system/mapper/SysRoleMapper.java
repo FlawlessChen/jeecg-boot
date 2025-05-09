@@ -78,5 +78,5 @@ public interface SysRoleMapper extends BaseMapper<SysRole> {
     List<String> queryRoleCodeByUsernameAndTenant(String username, String tenantIdHeader);
 
     @InterceptorIgnore(tenantLine = "true")
-    List<SysRole> queryallNoByTenant();
+    List<SysRole> queryallNoByTenant(@Param("tenantId") Integer tenantId);
 }

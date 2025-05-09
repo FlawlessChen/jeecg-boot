@@ -2,7 +2,7 @@
   <BasicDrawer @register="registerBaseDrawer" title="角色用户" width="800" destroyOnClose>
     <BasicTable @register="registerTable" :rowSelection="rowSelection">
       <template #tableTitle>
-        <a-button type="primary" @click="handleCreate" v-if="!disableUserEdit"> 新增用户</a-button>
+        <!--<a-button type="primary" @click="handleCreate" v-if="!disableUserEdit"> 新增用户</a-button>-->
         <a-button type="primary" @click="handleSelect"> 已有用户</a-button>
 
         <a-dropdown v-if="checkedKeys.length > 0">

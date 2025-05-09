@@ -111,7 +111,7 @@ public class SysDepartServiceImpl extends ServiceImpl<SysDepartMapper, SysDepart
 		LambdaQueryWrapper<SysDepart> query = new LambdaQueryWrapper<SysDepart>();
 		//------------------------------------------------------------------------------------------------
 		//是否开启系统管理模块的多租户数据隔离【SAAS多租户模式】
-		//此处关闭多租户模式---2025年5月7日18:00:28
+		//此处忽略多租户模式---2025年5月7日18:00:28
 		/*if(MybatisPlusSaasConfig.OPEN_SYSTEM_TENANT_CONTROL){
 			query.eq(SysDepart::getTenantId, oConvertUtils.getInt(TenantContext.getTenant(), 0));
 		}*/
@@ -618,7 +618,7 @@ public class SysDepartServiceImpl extends ServiceImpl<SysDepartMapper, SysDepart
 		LambdaQueryWrapper<SysDepart> lqw=new LambdaQueryWrapper<>();
 		//------------------------------------------------------------------------------------------------
 		//是否开启系统管理模块的 SASS 控制
-		//此处关闭多租户模式 --2025年5月8日09:13:50
+		//此处忽略多租户模式 --2025年5月8日09:13:50
 		/*if(MybatisPlusSaasConfig.OPEN_SYSTEM_TENANT_CONTROL){
 			lqw.eq(SysDepart::getTenantId, oConvertUtils.getInt(TenantContext.getTenant(), 0));
 		}*/

@@ -1,5 +1,6 @@
 package org.jeecg.modules.system.mapper;
 
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Constants;
@@ -126,6 +127,8 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
      * @Date 2019/12/13 16:10
      * @param roleIdArray
      */
+	//忽略多租户
+	@InterceptorIgnore(tenantLine = "true")
 	void deleteBathRoleUserRelation(@Param("roleIdArray") String[] roleIdArray);
 
     /**
@@ -134,7 +137,16 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
      * @Date 2019/12/13 16:10
      * @param roleIdArray
      */
+	//忽略多租户
+	@InterceptorIgnore(tenantLine = "true")
 	void deleteBathRolePermissionRelation(@Param("roleIdArray") String[] roleIdArray);
+
+	/**
+	 * 批量删除角色
+	 */
+	//忽略多租户
+	@InterceptorIgnore(tenantLine = "true")
+	void deleteBathRole(@Param("roleIdArray") String[] roleIdArray);
 
 	/**
 	 * 查询被逻辑删除的用户
@@ -222,4 +234,5 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
 	 */
 	@Select("select id,phone from sys_user where phone = #{phone} and username = #{username}")
     SysUser getUserByNameAndPhone(@Param("phone") String phone, @Param("username") String username);
+
 }

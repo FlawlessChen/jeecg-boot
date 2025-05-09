@@ -150,6 +150,15 @@
 			#{id}
 		</foreach>
 	</update>
+	<!-- 批量删除角色-->
+	<update id="deleteBathRole">
+		delete from sys_role
+		where id in
+		<foreach item="id" collection="roleIdArray" open="(" separator="," close=")">
+			#{id}
+		</foreach>
+	</update>
+
 
 	<!-- 查询被逻辑删除的用户 -->
 	<select id="selectLogicDeleted" resultType="org.jeecg.modules.system.entity.SysUser">
@@ -179,7 +188,6 @@
 			#{userId}
 		</foreach>
 	</delete>
-
 	<!-- 更新空字符串为null -->
 	<update id="updateNullByEmptyString">
 		UPDATE sys_user

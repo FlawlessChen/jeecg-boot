@@ -77,5 +77,5 @@ public interface ISysRoleService extends IService<SysRole> {
 
     List<String> queryRoleCodeByUsernameAndTenant(String username, String tenantIdHeader);
 
-    List<SysRole> queryallNoByTenant();
+    List<SysRole> queryallNoByTenant(Integer tenantId);
 }

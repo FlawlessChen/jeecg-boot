@@ -82,10 +82,10 @@
 
   function getActions(record) {
     return [
-      {
+      /* {
         label: '用户',
         onClick: seeTenantPackUser.bind(null, record),
-      },
+      }, */
       {
         label: '编辑',
         onClick: handleEdit.bind(null, record),

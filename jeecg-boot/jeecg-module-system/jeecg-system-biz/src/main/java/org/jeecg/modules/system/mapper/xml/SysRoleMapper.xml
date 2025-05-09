@@ -52,6 +52,10 @@
     </select>
     <select id="queryallNoByTenant" resultType="org.jeecg.modules.system.entity.SysRole">
         select * from sys_role
+        WHERE 1=1
+        <if test="tenantId != null">
+            AND tenant_id = #{tenantId}
+        </if>
     </select>
 
 </mapper>

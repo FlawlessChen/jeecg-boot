@@ -4,21 +4,38 @@
 
     <!-- 通过租户id获取数据 -->
     <select id="getPageUserList" resultType="org.jeecg.modules.system.entity.SysUser">
-        SELECT su.id,su.username,su.realname,su.sex,su.phone FROM sys_user su
-        JOIN sys_user_tenant str ON str.user_id = su.id and str.status = '1'
-        WHERE su.del_flag = 0
-        <if test="userTenantId!=null">
-            AND str.tenant_id = #{userTenantId}
+        SELECT
+        su.id,
+        su.username,
+        su.realname,
+        su.sex,
+        su.phone,
+        GROUP_CONCAT(DISTINCT sr.role_name SEPARATOR ',') AS role_names
+        FROM
+        sys_user su
+        JOIN
+        sys_user_tenant str ON str.user_id = su.id AND str.status = '1'
+        LEFT JOIN
+        sys_user_role sur ON sur.user_id = su.id
+        LEFT JOIN
+        sys_role sr ON sr.id = sur.role_id
+        WHERE
+        su.del_flag = 0
+        <if test="userTenantId != null and userTenantId != ''">
+            AND str.tenant_id = #{userTenantId} AND sr.tenant_id = #{userTenantId}
         </if>
-        <if test="user.username!='' and user.username!=null">
-            <bind name="bindKeyword" value="'%'+user.username+'%'"/>
-            AND su.username like #{bindKeyword}
+        <if test="user.username != null and user.username != ''">
+            <bind name="bindKeyword" value="'%' + user.username + '%'" />
+            AND su.username LIKE #{bindKeyword}
         </if>
-        <if test="user.realname!='' and user.realname!=null">
-            <bind name="bindRealName" value="'%'+user.realname+'%'"/>
-            AND su.realname like #{bindRealName}
+        <if test="user.realname != null and user.realname != ''">
+            <bind name="bindRealName" value="'%' + user.realname + '%'" />
+            AND su.realname LIKE #{bindRealName}
         </if>
-        ORDER BY su.create_time DESC
+        GROUP BY
+        su.id, su.username, su.realname, su.sex, su.phone, su.create_time
+        ORDER BY
+        su.create_time DESC
     </select>
 
     <!--根据租户id获取用户ids-->

@@ -57,6 +57,4 @@ public class SysPackPermission implements Serializable {
     @ApiModelProperty(value = "更新时间")
     private Date updateTime;
 
-    @ApiModelProperty(value = "租户ID")
-    private java.lang.Integer tenantId;
 }

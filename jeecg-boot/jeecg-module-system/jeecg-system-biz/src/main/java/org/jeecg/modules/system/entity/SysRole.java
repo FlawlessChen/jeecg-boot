@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.Date;
 
+import org.jeecg.common.aspect.annotation.Dict;
 import org.jeecgframework.poi.excel.annotation.Excel;
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -79,5 +80,6 @@ public class SysRole implements Serializable {
     private Date updateTime;
 
     /**租户ID*/
+    @Dict(dictTable ="sys_tenant",dicText = "name",dicCode = "id")
     private java.lang.Integer tenantId;
 }

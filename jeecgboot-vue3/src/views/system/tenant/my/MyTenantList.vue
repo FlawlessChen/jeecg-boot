@@ -2,14 +2,14 @@
   <div>
     <BasicTable @register="registerTable" :rowSelection="rowSelection">
       <template #tableTitle>
-        <a-button
+        <!-- <a-button
           preIcon="ant-design:user-add-outlined"
           type="primary"
           @click="handleInvitation"
           style="margin-right: 5px"
           :disabled="selectedRowKeys.length === 0"
           >邀请用户加入</a-button
-        >
+        > -->
         <a-button
           preIcon="ant-design:plus-outlined"
           type="primary"

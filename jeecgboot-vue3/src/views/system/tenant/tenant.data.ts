@@ -235,6 +235,11 @@ export const userColumns: BasicColumn[] =[
     dataIndex: 'phone',
     width: 100,
   },
+  {
+    title: '所属角色',
+    dataIndex: 'roleNames',
+    width: 100,
+  }
 ];
 
 //邀请用户搜索表单

@@ -675,8 +675,12 @@ public class SysUserController {
                 SysUserRole one = sysUserRoleService.getOne(queryWrapper);
                 if(one==null){
                     sysUserRoleService.save(sysUserRole);
-                    //将所选择的人员同步到sys_user_tenant表中sysUserRole.userId为userId,tentantId为tentantId
+                    //将所选择的人员同步到sys_user_tenant表中sysUserRole.userId为userId,tenantId为tenantId
                     if(oConvertUtils.isNotEmpty(tenantId)){
+                        //此处需要判断要添加的数据是否已经存在
+                        /*QueryWrapper<SysUserTenant> tenantWrapper = new QueryWrapper<>();
+                        tenantWrapper.eq("user_id", sysUserId).eq("tenant_id", tenantId);
+                        SysUserTenant existingTenant = userTenantService.getOne(tenantWrapper);*/
                         SysUserTenant sysUserTenant = new SysUserTenant();
                         sysUserTenant.setUserId(sysUserRole.getUserId());
                         sysUserTenant.setTenantId(Integer.valueOf(tenantId));

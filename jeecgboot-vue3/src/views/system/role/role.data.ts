@@ -13,10 +13,10 @@ export const columns = [
     dataIndex: 'roleCode',
     width: 100,
   },
+    //租户名称使用api回显tenantId的name
   {
-    /**租户号 */
-    title: '租户号',
-    dataIndex: 'tenantId',
+    title: '所属租户',
+    dataIndex: 'tenantId_dictText',
     width: 100,
   },
   {
@@ -56,6 +56,38 @@ export const searchFormSchema: FormSchema[] = [
     component: 'Input',
     colProps: { span: 6 },
   },
+  {
+    field: 'tenantId',
+    label: '所属租户', 
+    component: 'ApiSelect',
+    componentProps: {
+      //multiple: 多选；不填写为单选
+     // mode: 'multiple',
+      //请求api,返回结果{ result: { records:[{'id':'1',name:'scott'},{'id':'2',name:'小张'}] }}
+      api: () => defHttp.get({ url: '/sys/tenant/list' }),
+      //数值转成String
+      numberToString: false,
+      //标题字段
+      labelField: 'name',
+      //值字段
+      valueField: 'id',
+      //请求参数
+      params: {},
+      //返回结果字段
+      resultField: 'records',
+    },
+  },
+  {
+    field: 'createTime',
+    label: '创建时间',
+    component: 'DatePicker',
+    componentProps: {
+      format: 'YYYY-MM-DD HH:mm:ss',
+      showTime: true,
+      valueFormat: 'YYYY-MM-DD HH:mm:ss',
+    },
+    colProps: { span: 6 },
+  }
 ];
 /**
  * 角色用户搜索form
@@ -102,7 +134,7 @@ export const formSchema: FormSchema[] = [
             }
             if (values) {
               return new Promise((resolve, reject) => {
-                isRoleExist({ id: model.id, roleCode: value })
+                isRoleExist({ id: model.id, roleCode: value,tenantId: model.tenantId })
                   .then((res) => {
                     res.success ? resolve() : reject(res.message || '校验失败');
                   })
@@ -124,7 +156,7 @@ export const formSchema: FormSchema[] = [
     component: 'ApiSelect',
     componentProps: {
       //multiple: 多选；不填写为单选
-      mode: 'multiple',
+     // mode: 'multiple',
       //请求api,返回结果{ result: { records:[{'id':'1',name:'scott'},{'id':'2',name:'小张'}] }}
       api: () => defHttp.get({ url: '/sys/tenant/list' }),
       //数值转成String

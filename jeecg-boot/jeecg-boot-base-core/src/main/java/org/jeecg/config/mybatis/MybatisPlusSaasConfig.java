@@ -55,13 +55,13 @@ public class MybatisPlusSaasConfig {
         if (MybatisPlusSaasConfig.OPEN_SYSTEM_TENANT_CONTROL) {
             //a.系统管理表
             TENANT_TABLE.add("sys_role");
-            TENANT_TABLE.add("sys_user_role");
+            //TENANT_TABLE.add("sys_user_role");
             /*TENANT_TABLE.add("sys_depart");
             TENANT_TABLE.add("sys_category");
             TENANT_TABLE.add("sys_data_source");
             TENANT_TABLE.add("sys_position");*/
             //TENANT_TABLE.add("sys_role_permission");
-            //TENANT_TABLE.add("sys_tenant_pack_perms");
+            //TENANT_TABLE.add("sys_tenant_pack_perms");--已去掉添加的租户Id字段
             //TENANT_TABLE.add("sys_announcement");
         }
 

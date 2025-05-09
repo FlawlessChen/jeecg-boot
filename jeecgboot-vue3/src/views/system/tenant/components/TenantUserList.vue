@@ -1,9 +1,9 @@
 <template>
   <BasicModal v-bind="$attrs" @register="registerModal" :title="title" @ok="handleSubmit" width="800px">
     <BasicTable @register="registerTable" :rowSelection="rowSelection">
-      <template #tableTitle>
+      <!-- <template #tableTitle>
         <a-button v-if="selectedRowKeys.length>0" preIcon="ant-design:delete-outlined" type="primary" @click="handleLeaveBatch" style="margin-right: 5px">批量请离</a-button>
-      </template>
+      </template> -->
       <template #action="{ record }">
         <TableAction :actions="getActions(record)" />
       </template>
@@ -27,6 +27,7 @@ const { prefixCls, tableContext } = useListPage({
     api: getTenantUserList,
     columns: userColumns,
     immediate:false,
+    showActionColumn:false,//此处关闭操作列，防止数据处理出现不一致
     formConfig: {
       schemas: userSearchFormSchema,
       //update-begin---author:wangshuai ---date:20230704  for：【QQYUN-5698】样式问题------------
@@ -62,14 +63,14 @@ async function handleSubmit(v) {
   closeModal();
 }
 
-function getActions(record) {
+/* function getActions(record) {
   return [
     {
       label: '移除',
       onClick: handleLeave.bind(null, record.id),
     },
   ]
-}
+} */
 
 /**
  * 成功

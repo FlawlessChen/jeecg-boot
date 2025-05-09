@@ -97,7 +97,8 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         //2.删除角色和权限关系
         sysUserMapper.deleteBathRolePermissionRelation(roleIds);
         //3.删除角色
-        this.removeByIds(Arrays.asList(roleIds));
+        //this.removeByIds(Arrays.asList(roleIds));，重写此方法，转为mapper
+        sysUserMapper.deleteBathRole(roleIds);
         return true;
     }
 
@@ -123,7 +124,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     }
 
     @Override
-    public List<SysRole> queryallNoByTenant() {
-        return sysRoleMapper.queryallNoByTenant();
+    public List<SysRole> queryallNoByTenant(Integer tenantId) {
+        return sysRoleMapper.queryallNoByTenant(tenantId);
     }
 }

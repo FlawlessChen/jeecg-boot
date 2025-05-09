@@ -6,6 +6,7 @@ import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.shiro.SecurityUtils;
@@ -23,11 +24,7 @@ import org.jeecg.common.util.oConvertUtils;
 import org.jeecg.config.mybatis.MybatisPlusSaasConfig;
 import org.jeecg.modules.base.service.BaseCommonService;
 import org.jeecg.modules.system.entity.*;
-import org.jeecg.modules.system.service.ISysTenantPackService;
-import org.jeecg.modules.system.service.ISysTenantService;
-import org.jeecg.modules.system.service.ISysUserService;
-import org.jeecg.modules.system.service.ISysUserTenantService;
-import org.jeecg.modules.system.service.ISysDepartService;
+import org.jeecg.modules.system.service.*;
 import org.jeecg.modules.system.vo.SysUserTenantVo;
 import org.jeecg.modules.system.vo.tenant.TenantDepartAuthInfo;
 import org.jeecg.modules.system.vo.tenant.TenantPackModel;
@@ -38,6 +35,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 租户配置信息
@@ -65,6 +63,13 @@ public class SysTenantController {
 
     @Autowired
     private ISysDepartService sysDepartService;
+
+    @Autowired
+    private ISysRoleService sysRoleService; // 记得加上这一行注入
+
+    @Autowired
+    private ISysUserRoleService sysUserRoleService;
+
 
     /**
      * 获取列表数据
@@ -178,6 +183,40 @@ public class SysTenantController {
      */
     @RequiresPermissions("system:tenant:delete")
     @RequestMapping(value = "/delete", method ={RequestMethod.DELETE, RequestMethod.POST})
+    /*
+    public Result<?> previewDelete(@RequestParam(name="id", required=true) String id) {
+        if (MybatisPlusSaasConfig.OPEN_SYSTEM_TENANT_CONTROL) {
+            LoginUser sysUser = (LoginUser) SecurityUtils.getSubject().getPrincipal();
+            SysTenant sysTenant = sysTenantService.getById(id);
+
+            String username = "admin";
+            String createdBy = sysUser.getUsername();
+            if (!sysTenant.getCreateBy().equals(createdBy) && !username.equals(createdBy)) {
+                return Result.error("无权限查看该租户相关信息");
+            }
+
+            // 查询 sys_role 中 tenant_id = 租户ID 的记录
+            Integer tenantId = sysTenant.getId();
+            List<SysRole> roles = sysRoleService.queryallNoByTenant(tenantId);
+
+            // 如果有对应的角色，继续查 sys_user_role 表
+            List<SysUserRole> userRoles = new ArrayList<>();
+            if (!CollectionUtils.isEmpty(roles)) {
+                List<String> roleIds = roles.stream().map(SysRole::getId).collect(Collectors.toList());
+                userRoles = sysUserRoleService.list(new QueryWrapper<SysUserRole>().in("role_id", roleIds));
+            }
+
+            // 封装结果返回
+            Map<String, Object> result = new HashMap<>();
+            result.put("rolesToDelete", roles);
+            result.put("userRolesToDelete", userRoles);
+
+            return Result.ok(result);
+        }
+
+        return Result.error("未启用租户隔离功能");
+    }
+*/
     public Result<?> delete(@RequestParam(name="id",required=true) String id) {
         //------------------------------------------------------------------
         //如果是saas隔离的情况下，判断当前租户id是否是当前租户下的
@@ -192,6 +231,26 @@ public class SysTenantController {
                 baseCommonService.addLog("未经授权，不能删除非自己创建的租户，租户ID：" + id + "，操作人：" + sysUser.getUsername(), CommonConstant.LOG_TYPE_2, CommonConstant.OPERATE_TYPE_3);
                 return Result.error("删除租户失败,当前操作人不是租户的创建人！");
             }
+            //多租户同步删除其他表数据
+            //根据sysTenant.getId()删除sys_role中与tenant_id相同的信息 ,根据要删除的sys_role表中的id删除sys_user_role表中与role_id相等的数据
+            // ------------------- 核心删除逻辑 -------------------
+            Integer tenantId = sysTenant.getId();
+            //sysRoleService.list(new QueryWrapper<SysRole>().eq("tenant_id", tenantId));
+            List<SysRole> roles = sysRoleService.queryallNoByTenant(tenantId);
+            if (!CollectionUtils.isEmpty(roles)) {
+                String[] roleIds = roles.stream().map(SysRole::getId).toArray(String[]::new);
+                //List<String> roleIds = roles.stream().map(SysRole::getId).collect(Collectors.toList());
+               /* sysUserRoleService.remove(new QueryWrapper<SysUserRole>().in("role_id", roleIds));
+                sysRoleService.removeByIds(roleIds);*/
+                //重写上面的删除逻辑，因为租户隔离了，但是我现在不想使用带着租户查询，使用mapper删除
+
+                //调用sysRoleService的    public boolean deleteBatchRole(String[] roleids);
+                //方法删除角色
+                sysRoleService.deleteBatchRole(roleIds);
+
+
+            }
+            // ----------------------------------------------------
         }
         //------------------------------------------------------------------
                 

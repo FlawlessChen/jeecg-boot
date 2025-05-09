@@ -2,6 +2,7 @@ package org.jeecg.modules.system.mapper;
 
 import java.util.List;
 
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Param;
@@ -28,6 +29,8 @@ public interface SysUserTenantMapper extends BaseMapper<SysUserTenant> {
      * @param userTenantId
      * @return
      */
+    //忽略多租户
+    @InterceptorIgnore(tenantLine = "true")
     List<SysUser> getPageUserList(@Param("page") Page<SysUser> page,@Param("userTenantId") Integer userTenantId,@Param("user") SysUser user);
 
     /**
@@ -173,5 +176,5 @@ public interface SysUserTenantMapper extends BaseMapper<SysUserTenant> {
      * @param userIds
      * @return
      */
-    List<Integer> getTenantIdsByUserIds(@Param("userIds") List<String> userIds);
+    //List<Integer> getTenantIdsByUserIds(@Param("userIds") List<String> userIds);
 }
