@@ -23,6 +23,8 @@
 <script lang="ts" name="tenant-default-pack" setup>
   import { ref, unref } from 'vue';
   import { BasicTable, TableAction } from '/@/components/Table';
+  import { BasicForm, FormSchema, useForm } from '/@/components/Form/index';
+
   import { useModal } from '/@/components/Modal';
   import { deleteTenantPack, packList } from '../tenant.api';
   import { packColumns, packFormSchema } from '../tenant.data';
@@ -31,12 +33,10 @@
   import { useListPage } from '/@/hooks/system/useListPage';
   import { useUserStore } from '/@/store/modules/user';
   import {Modal} from "ant-design-vue";
-
   const { createMessage } = useMessage();
   const [registerModal, { openModal }] = useModal();
   const [registerPackMenuModal, { openModal: packModal }] = useModal();
   const userStore = useUserStore();
-
   // 列表页面公共参数、方法
   const { prefixCls, tableContext } = useListPage({
     designScope: 'tenant-template',
@@ -52,7 +52,6 @@
     },
   });
   const [registerTable, { reload }, { rowSelection, selectedRowKeys, selectedRows }] = tableContext;
-
   /**
    * 操作列定义
    * @param record

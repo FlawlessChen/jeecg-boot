@@ -28,8 +28,8 @@
   import { useListPage } from '/@/hooks/system/useListPage';
   import { BasicTable, TableAction } from '/@/components/Table';
   import TenantPackMenuModal from './TenantPackMenuModal.vue';
-  import {Modal} from "ant-design-vue";
   import TenantPackUserModal from './TenantPackUserModal.vue';
+  import {Modal} from "ant-design-vue";
   import {useMessage} from "/@/hooks/web/useMessage";
 
   const [registerPackMenu, { openModal }] = useModal();

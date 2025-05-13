@@ -1,7 +1,9 @@
 <template>
-  <BasicDrawer v-bind="$attrs" @register="registerDrawer" width="650px" destroyOnClose showFooter>
+  <BasicDrawer v-bind="$attrs" :zIndex="2000"  @register="registerDrawer" width="650px"
+  destroyOnClose showFooter>
+  <!-- zindex为优先级，其中model默认值为1000，将此页面的drawer设置为2000，实现优先展示 -->
     <template #title>
-      角色权限配置
+      套餐权限配置
       <a-dropdown>
         <Icon icon="ant-design:more-outlined" class="more-icon" />
         <template #overlay>
@@ -40,22 +42,23 @@
     <template #footer>
       <!-- <PopConfirmButton title="确定放弃编辑？" @confirm="closeDrawer" okText="确定" cancelText="取消"></PopConfirmButton> -->
       <a-button @click="closeDrawer">取消</a-button>
-      <a-button @click="handleSubmit(false)" type="primary" :loading="loading" ghost style="margin-right: 0.8rem">仅保存</a-button>
-      <a-button @click="handleSubmit(true)" type="primary" :loading="loading">保存并关闭</a-button>
+      <a-button @click="addToList()" type="primary" :loading="loading">添加到套餐</a-button>
     </template>
     <RoleDataRuleDrawer @register="registerDrawer1" />
   </BasicDrawer>
 </template>
 <script lang="ts" setup>
-  import { ref, computed, unref, onMounted } from 'vue';
+  import { ref, computed, unref, onMounted ,watch} from 'vue';
   import { BasicDrawer, useDrawer, useDrawerInner } from '/@/components/Drawer';
   import { BasicTree, TreeItem } from '/@/components/Tree';
   import { PopConfirmButton } from '/@/components/Button';
-  import RoleDataRuleDrawer from './RoleDataRuleDrawer.vue';
-  import { queryTreeListForRoleByTenant,queryTreeListForRole, queryRolePermission, saveRolePermission } from '../role.api';
+  import RoleDataRuleDrawer from '/@/views/system/role/components/RoleDataRuleDrawer.vue';
+  import { queryTreeListForRoleByTenant,queryTreeListForRole, queryRolePermission, saveRolePermission,queryTreeList } from '/@/views/system/role/role.api';
   import { useI18n } from "/@/hooks/web/useI18n";
   import { ROLE_AUTH_CONFIG_KEY } from '/@/enums/cacheEnum';
-  const emit = defineEmits(['register']);
+  import { addPackPermission, editPackPermission } from '../tenant.api';
+  
+  const emit = defineEmits(['register','getDetailInfo']);
   //树的信息
   const treeData = ref<TreeItem[]>([]);
   //树的全部节点信息
@@ -70,23 +73,27 @@
   //树的实例
   const treeRef = ref(null);
   const loading = ref(false);
+  const detailInfo = ref<any>({});
   //展开折叠的key
   const expandedKeys = ref<any>([]);
   //父子节点选中状态是否关联 true不关联，false关联
   const checkStrictly = ref<boolean>(false);
   const [registerDrawer1, { openDrawer: openDataRuleDrawer }] = useDrawer();
   const [registerDrawer, { setDrawerProps, closeDrawer }] = useDrawerInner(async (data) => {
+    detailInfo.value = data.records;
+    //debugger
     await reset();
     setDrawerProps({ confirmLoading: false, loading: true });
     roleId.value = data.roleId;
     tenantId.value = data.tenantId;
-    //初始化数据
-    const roleResult = await queryTreeListForRoleByTenant({ roleId: unref(roleId), tenantId: unref(tenantId) });
-    //const roleResult = await queryTreeListForRole();
+    //初始化数据--此数据为树的所有数据
+    //const roleResult = await queryTreeListForRoleByTenant({ roleId: unref(roleId), tenantId: unref(tenantId) });
+    const roleResult = await queryTreeListForRole();
     // update-begin--author:liaozhiyang---date:20240228---for：【QQYUN-8355】角色权限配置的菜单翻译
     treeData.value = translateTitle(roleResult.treeList);
     // update-end--author:liaozhiyang---date:20240228---for：【QQYUN-8355】角色权限配置的菜单翻译
     allTreeKeys.value = roleResult.ids;
+    console.log('>>>>>>>>>>>>>>>>>>>>.allTreeKeys', allTreeKeys.value);
     // update-begin--author:liaozhiyang---date:20240531---for：【TV360X-590】角色授权弹窗操作缓存
     const localData = localStorage.getItem(ROLE_AUTH_CONFIG_KEY);
     if (localData) {
@@ -97,9 +104,12 @@
       expandedKeys.value = roleResult.ids;
     }
     // update-end--author:liaozhiyang---date:20240531---for：【TV360X-590】角色授权弹窗操作缓存
-    //初始化角色菜单数据
-    const permResult = await queryRolePermission({ roleId: unref(roleId), tenantId: unref(tenantId) });
+    //初始化角色菜单数据--此数据是选中的数据
+    //const permResult = await queryRolePermission({ roleId: unref(roleId), tenantId: unref(tenantId) });
+    const permResult = data.records.permissionIds?.split(',').map(item => item.trim());;//todo这边测试一下需要的格式  2025年5月13日09:57:39
+    //把data.permissionId的格式["1","2","3"]改为arrays格式
     checkedKeys.value = permResult;
+    console.log('>>>>>>>>>>>>>>>>>>>>.checkedKeys', checkedKeys.value);
     defaultCheckedKeys.value = permResult;
     setDrawerProps({ loading: false });
   });
@@ -208,41 +218,24 @@
     }
     return tree;
   }
-  /**
-   * 提交
-   */
-  async function handleSubmit(exit) {
-    let params = {
-      roleId: unref(roleId),
-      permissionIds: unref(getTree().getCheckedKeys()).join(','),
-      lastpermissionIds: unref(defaultCheckedKeys).join(','),
-      tenantId: unref(tenantId),
-    };
-    //update-begin-author:taoyan date:2023-2-11 for: issues/352 VUE角色授权重复保存
-    if(loading.value===false){
-      await doSave(params)
-    }else{
-      console.log('请等待上次执行完毕!');
-    }
-    if(exit){
-      // 如果关闭
-      closeDrawer();
-    }else{
-      // 没有关闭需要重新获取选中数据
-      const permResult = await queryRolePermission({ roleId: unref(roleId), tenantId: unref(tenantId) });
-      defaultCheckedKeys.value = permResult;
-    }
-  }
+
   
-  // VUE角色授权重复保存 #352
-  async function doSave(params) {
-    loading.value = true;
-    await saveRolePermission(params);
-    setTimeout(()=>{
-      loading.value = false;
-    }, 500)
+  /**
+   * 添加到列表
+   */
+  async function addToList() {
+    if(detailInfo.value.packType === 'custom'){
+      detailInfo.value.tenantId = unref(tenantId);
+    }else{
+      detailInfo.value.tenantId = 0;
+    }
+    detailInfo.value.permissionIds = checkedKeys.value
+    closeDrawer();
   }
-  //update-end-author:taoyan date:2023-2-11 for: issues/352 VUE角色授权重复保存
+
+  watch(detailInfo, (newVal) => {
+    emit('getDetailInfo', newVal);
+  }, { deep: true });
 
   /**
    * 树菜单选择

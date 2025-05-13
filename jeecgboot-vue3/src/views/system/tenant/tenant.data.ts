@@ -309,8 +309,17 @@ export const packMenuFormSchema: FormSchema[] = [
       multiple: true,
       treeCheckAble:true,
       treeCheckStrictly: true,
-      getPopupContainer: () => document.body,
+      getPopupContainer: () => document.body,    
+      disabled: true,
     },
+    //禁用
+
+  },
+    {
+    field: 'permissionIds',
+    label: '请配置套餐权限',
+    component: 'Input',
+    slot: 'permissionSlot', // 使用插槽形式，借用菜单管理的抽屉组件
   },
   {
     field: 'remarks',

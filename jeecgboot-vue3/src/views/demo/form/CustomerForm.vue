@@ -3,7 +3,7 @@
     <CollapseContainer title="自定义表单">
       <BasicForm @register="register" @submit="handleSubmit">
         <template #f3="{ model, field }">
-          <a-input v-model:value="model[field]" placeholder="自定义slot" />
+          <a-button v-model:value="model[field]" placeholder="自定义slot" />
         </template>
       </BasicForm>
     </CollapseContainer>
