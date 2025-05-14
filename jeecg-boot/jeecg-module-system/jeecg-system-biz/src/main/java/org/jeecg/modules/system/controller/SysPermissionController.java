@@ -16,6 +16,7 @@ import org.jeecg.common.system.vo.LoginUser;
 import org.jeecg.common.util.Md5Util;
 import org.jeecg.common.util.oConvertUtils;
 import org.jeecg.config.JeecgBaseConfig;
+import org.jeecg.config.mybatis.MybatisPlusSaasConfig;
 import org.jeecg.config.shiro.ShiroRealm;
 import org.jeecg.modules.base.service.BaseCommonService;
 import org.jeecg.modules.system.constant.DefIndexConst;
@@ -250,129 +251,108 @@ public class SysPermissionController {
 	@RequestMapping(value = "/getUserPermissionByToken", method = RequestMethod.GET)
 	//@DynamicTable(value = DynamicTableConstant.SYS_ROLE_INDEX)
 	public Result<?> getUserPermissionByToken(HttpServletRequest request) {
-		Result<JSONObject> result = new Result<JSONObject>();
+		Result<JSONObject> result = new Result<>();
 		try {
-			//直接获取当前用户不适用前端token
-			String tenantIdHeader = request.getHeader("X-Tenant-Id");
-            //如果tenantIdHeader为0或者空，直接输出请联系管理员分配租户
-            if (tenantIdHeader == null || tenantIdHeader.trim().isEmpty() || "0".equals(tenantIdHeader.trim())) {
-                return Result.error("请联系管理员分配租户！");
-            }
 			LoginUser loginUser = (LoginUser) SecurityUtils.getSubject().getPrincipal();
-			//todo 由于目前切换租户时，角色未变更，所以需要根据租户ID重新获取角色信息
-			List<String> roleCodes = sysRoleService.queryRoleCodeByUsernameAndTenant(loginUser.getUsername(), tenantIdHeader);
-			System.out.println(roleCodes);
-			//roleCodes转为1,2的字符串
-			String roleCode = String.join(SymbolConstant.COMMA, roleCodes);
-			loginUser.setRoleCode(roleCode);
-			//todo 现在只考虑单角色的情况，如果loginUser.getRoleCode有逗号，取第一个角色,后续考虑为取多角色的并集
-			if (loginUser.getRoleCode().contains(SymbolConstant.COMMA)) {
-				loginUser.setRoleCode(loginUser.getRoleCode().split(SymbolConstant.COMMA)[0]);
-			}
 			if (oConvertUtils.isEmpty(loginUser)) {
 				return Result.error("请登录系统！");
 			}
-			// 获取当前用户的权限列表
-			List<SysPermission> metaList = getPermissionsForUser(loginUser);
-			//----此处修改，用来展示前端页面的菜单显示----
-			//List<SysPermission> metaList = sysPermissionService.queryByUser(loginUser.getId());
 
-			//添加首页路由
-			//update-begin-author:taoyan date:20200211 for: TASK #3368 【路由缓存】首页的缓存设置有问题，需要根据后台的路由配置来实现是否缓存
+			List<SysPermission> metaList;
 
-			//update-begin--Author:zyf Date:20220425  for:自定义首页地址 LOWCOD-1578
-			String version = request.getHeader(CommonConstant.VERSION);
-			SysRoleIndex defIndexCfg = sysUserService.getDynamicIndexByUserRole(loginUser.getUsername(), version);
-			if (defIndexCfg == null) {
-				defIndexCfg = sysRoleIndexService.initDefaultIndex();
+			if (!MybatisPlusSaasConfig.OPEN_SYSTEM_TENANT_CONTROL) {
+				// 未启用多租户，直接根据用户ID查询权限
+				metaList = sysPermissionService.queryByUser(loginUser.getId());
+			} else {
+				String tenantId = request.getHeader("X-Tenant-Id");
+				if (oConvertUtils.isEmpty(tenantId) || "0".equals(tenantId.trim())) {
+					return Result.error("请联系管理员分配租户！");
+				}
+
+				// 多租户下，根据租户ID重新获取角色
+				List<String> roleCodes = sysRoleService.queryRoleCodeByUsernameAndTenant(loginUser.getUsername(), tenantId);
+				String roleCode = String.join(SymbolConstant.COMMA, roleCodes);
+				loginUser.setRoleCode(roleCode.contains(SymbolConstant.COMMA) ? roleCode.split(SymbolConstant.COMMA)[0] : roleCode);
+
+				// 获取多租户下的权限
+				metaList = getPermissionsForUser(loginUser);
 			}
-			//update-end--Author:zyf  Date:20220425  for：自定义首页地址 LOWCOD-1578
 
-			// 如果没有授权角色首页，则自动添加首页路由
-			if (!PermissionDataUtil.hasIndexPage(metaList, defIndexCfg)) {
-				LambdaQueryWrapper<SysPermission> indexQueryWrapper = new LambdaQueryWrapper<>();
-				indexQueryWrapper.eq(SysPermission::getUrl, defIndexCfg.getUrl());
-				SysPermission indexMenu = sysPermissionService.getOne(indexQueryWrapper);
-				if (indexMenu == null) {
-					indexMenu = new SysPermission();
-					indexMenu.setUrl(defIndexCfg.getUrl());
-					indexMenu.setComponent(defIndexCfg.getComponent());
-					indexMenu.setRoute(defIndexCfg.isRoute());
-					indexMenu.setName(DefIndexConst.DEF_INDEX_NAME);
-					indexMenu.setMenuType(0);
-				}
-				// 如果没有授权一级菜单，则自身变为一级菜单
-				if (indexMenu.getParentId() != null && !PermissionDataUtil.hasMenuById(metaList, indexMenu.getParentId())) {
-					indexMenu.setMenuType(0);
-					indexMenu.setParentId(null);
-				}
-				if (oConvertUtils.isEmpty(indexMenu.getIcon())) {
-					indexMenu.setIcon("ant-design:home");
-				}
-				metaList.add(0, indexMenu);
-			}
-			//update-end-author:taoyan date:20200211 for: TASK #3368 【路由缓存】首页的缓存设置有问题，需要根据后台的路由配置来实现是否缓存
+			// 首页路由处理
+			handleIndexRoute(request, loginUser, metaList);
 
-/* TODO 注： 这段代码的主要作用是：把首页菜单的组件替换成角色菜单的组件，由于现在的逻辑如果角色菜单不存在则自动插入一条，所以这段代码暂时不需要
-			List<SysPermission> menus = metaList.stream().filter(sysPermission -> {
-				if (defIndexCfg.getUrl().equals(sysPermission.getUrl())) {
-					return true;
-				}
-				return defIndexCfg.getUrl().equals(sysPermission.getUrl());
-			}).collect(Collectors.toList());
-			//update-begin---author:liusq ---date:2022-06-29  for：设置自定义首页地址和组件----------
-			if (menus.size() == 1) {
-				String component = defIndexCfg.getComponent();
-				String routeUrl = defIndexCfg.getUrl();
-				boolean route = defIndexCfg.isRoute();
-				if (oConvertUtils.isNotEmpty(routeUrl)) {
-					menus.get(0).setComponent(component);
-					menus.get(0).setRoute(route);
-					menus.get(0).setUrl(routeUrl);
-				} else {
-					menus.get(0).setComponent(component);
-				}
-			}
-			//update-end---author:liusq ---date:2022-06-29  for：设置自定义首页地址和组件-----------
-*/
-
-			JSONObject json = new JSONObject();
-			JSONArray menujsonArray = new JSONArray();
-			this.getPermissionJsonArray(menujsonArray, metaList, null);
-			//一级菜单下的子菜单全部是隐藏路由，则一级菜单不显示
-			this.handleFirstLevelMenuHidden(menujsonArray);
-
-			JSONArray authjsonArray = new JSONArray();
-			this.getAuthJsonArray(authjsonArray, metaList);
-			//查询所有的权限
-			LambdaQueryWrapper<SysPermission> queryAuth = new LambdaQueryWrapper<SysPermission>().select( SysPermission::getName, SysPermission::getPermsType, SysPermission::getPerms, SysPermission::getStatus);
-			queryAuth.eq(SysPermission::getDelFlag, CommonConstant.DEL_FLAG_0);
-			queryAuth.eq(SysPermission::getMenuType, CommonConstant.MENU_TYPE_2);
-			//query.eq(SysPermission::getStatus, "1");
-			List<SysPermission> allAuthList = sysPermissionService.list(queryAuth);
-			JSONArray allauthjsonArray = new JSONArray();
-			this.getAllAuthJsonArray(allauthjsonArray, allAuthList);
-			//路由菜单
-			json.put("menu", menujsonArray);
-			//按钮权限（用户拥有的权限集合）
-			json.put("auth", authjsonArray);
-			// 按钮权限（用户拥有的权限集合）
-			List<String> codeList = metaList.stream()
-					.filter((permission) -> CommonConstant.MENU_TYPE_2.equals(permission.getMenuType()) && CommonConstant.STATUS_1.equals(permission.getStatus()))
-					.collect(ArrayList::new, (list, permission) -> list.add(permission.getPerms()), ArrayList::addAll);
-			// 所拥有的权限编码(vue3专用)
-			json.put("codeList", codeList);
-			//全部权限配置集合（按钮权限，访问权限）
-			json.put("allAuth", allauthjsonArray);
-			//数据源安全模式
-			json.put("sysSafeMode", jeecgBaseConfig.getFirewall()!=null? jeecgBaseConfig.getFirewall().getDataSourceSafe(): false);
+			// 构建权限数据
+			JSONObject json = buildPermissionJson(metaList);
 			result.setResult(json);
 		} catch (Exception e) {
-			result.error500("查询失败:" + e.getMessage());  
-			log.error(e.getMessage(), e);
+			log.error("查询失败: ", e);
+			result.error500("查询失败: " + e.getMessage());
 		}
 		return result;
 	}
+
+	/** 添加首页路由逻辑 */
+	private void handleIndexRoute(HttpServletRequest request, LoginUser loginUser, List<SysPermission> metaList) {
+		String version = request.getHeader(CommonConstant.VERSION);
+		SysRoleIndex defIndexCfg = sysUserService.getDynamicIndexByUserRole(loginUser.getUsername(), version);
+		if (defIndexCfg == null) {
+			defIndexCfg = sysRoleIndexService.initDefaultIndex();
+		}
+
+		if (!PermissionDataUtil.hasIndexPage(metaList, defIndexCfg)) {
+			SysPermission indexMenu = sysPermissionService.getOne(
+					new LambdaQueryWrapper<SysPermission>().eq(SysPermission::getUrl, defIndexCfg.getUrl()));
+			if (indexMenu == null) {
+				indexMenu = new SysPermission();
+				indexMenu.setUrl(defIndexCfg.getUrl());
+				indexMenu.setComponent(defIndexCfg.getComponent());
+				indexMenu.setRoute(defIndexCfg.isRoute());
+				indexMenu.setName(DefIndexConst.DEF_INDEX_NAME);
+				indexMenu.setMenuType(0);
+			}
+			if (indexMenu.getParentId() != null && !PermissionDataUtil.hasMenuById(metaList, indexMenu.getParentId())) {
+				indexMenu.setMenuType(0);
+				indexMenu.setParentId(null);
+			}
+			if (oConvertUtils.isEmpty(indexMenu.getIcon())) {
+				indexMenu.setIcon("ant-design:home");
+			}
+			metaList.add(0, indexMenu);
+		}
+	}
+
+	/** 构建权限 JSON */
+	private JSONObject buildPermissionJson(List<SysPermission> metaList) {
+		JSONObject json = new JSONObject();
+		JSONArray menuArray = new JSONArray();
+		JSONArray authArray = new JSONArray();
+		JSONArray allAuthArray = new JSONArray();
+
+		getPermissionJsonArray(menuArray, metaList, null);
+		handleFirstLevelMenuHidden(menuArray);
+		getAuthJsonArray(authArray, metaList);
+
+		LambdaQueryWrapper<SysPermission> queryAuth = new LambdaQueryWrapper<SysPermission>()
+				.select(SysPermission::getName, SysPermission::getPermsType, SysPermission::getPerms, SysPermission::getStatus)
+				.eq(SysPermission::getDelFlag, CommonConstant.DEL_FLAG_0)
+				.eq(SysPermission::getMenuType, CommonConstant.MENU_TYPE_2);
+
+		List<SysPermission> allAuthList = sysPermissionService.list(queryAuth);
+		getAllAuthJsonArray(allAuthArray, allAuthList);
+
+		json.put("menu", menuArray);
+		json.put("auth", authArray);
+		json.put("codeList", metaList.stream()
+				.filter(p -> CommonConstant.MENU_TYPE_2.equals(p.getMenuType()) && CommonConstant.STATUS_1.equals(p.getStatus()))
+				.map(SysPermission::getPerms)
+				.collect(Collectors.toList()));
+		json.put("allAuth", allAuthArray);
+		json.put("sysSafeMode", jeecgBaseConfig.getFirewall() != null && jeecgBaseConfig.getFirewall().getDataSourceSafe());
+
+		return json;
+	}
+
+
 	/**
 	 * 【vue3专用】获取
 	 * 1、查询用户拥有的按钮/表单访问权限
@@ -671,64 +651,70 @@ public class SysPermissionController {
 			String roleId = json.getString("roleId");
 			String permissionIds = json.getString("permissionIds");
 			String lastPermissionIds = json.getString("lastpermissionIds");
-			//2025年4月29日15:51:32 需要清除一下脏数据，具体为，把intersectionIds的数据过滤为仅存在于当前套餐包里的permissionIds
-			//1.查询最大权限范围
-			String roleTenantId = json.getString("tenantId");
-			if (oConvertUtils.isEmpty(roleTenantId)) {
-				result.error500("请将该角色分配到套餐中");
-				return result;
+			//判断是否是多租户
+			if(MybatisPlusSaasConfig.OPEN_SYSTEM_TENANT_CONTROL) {
+				//2025年4月29日15:51:32 需要清除一下脏数据，具体为，把intersectionIds的数据过滤为仅存在于当前套餐包里的permissionIds
+				//1.查询最大权限范围
+				String roleTenantId = json.getString("tenantId");
+				if (oConvertUtils.isEmpty(roleTenantId)) {
+					result.error500("请将该角色分配到套餐中");
+					return result;
+				}
+				// 查询 sys_tenant_pack 中符合条件的 id 列表
+				List<String> tenantPackIds = sysTenantPackService.lambdaQuery()
+						.eq(SysTenantPack::getTenantId, roleTenantId)
+						.eq(SysTenantPack::getStatus, 1)
+						.list()
+						.stream()
+						.map(SysTenantPack::getId)
+						.collect(Collectors.toList());
+				// 查询 packPermission
+				List<SysPackPermission> packPermissions = sysPackPermissionService.lambdaQuery()
+						.eq(SysPackPermission::getPackId, tenantPackIds.get(0))
+						.list();
+
+				// 提取 permissionId 列表
+				List<String> maxPermissionIds = packPermissions.stream()
+						.map(SysPackPermission::getPermissionId)
+						.filter(Objects::nonNull)
+						.collect(Collectors.toList());
+				// 根据 permissionIds 查询 SysPermission
+				LambdaQueryWrapper<SysPermission> maxQuery = new LambdaQueryWrapper<>();
+				maxQuery.eq(SysPermission::getDelFlag, CommonConstant.DEL_FLAG_0)
+						.orderByAsc(SysPermission::getSortNo);
+
+				if (!maxPermissionIds.isEmpty()) {
+					maxQuery.in(SysPermission::getId, maxPermissionIds);
+				}
+				List<SysPermission> maxList = sysPermissionService.list(maxQuery);
+				// 取出权限ids
+				List<String> ids = new ArrayList<>();
+				for (SysPermission sysPer : maxList) {
+					ids.add(sysPer.getId());
+				}
+				//4.ids修改为[1,2]的格式
+				String maxIds = String.join(",", ids);
+				//5.过滤掉intersectionIds中不在maxIds中的数据
+				// 计算 intersectionIds 和 maxIds 的交集
+				List<String> permissionList = Arrays.asList(permissionIds.split(","));
+				Set<String> maxIdsSet = new HashSet<>(Arrays.asList(maxIds.split(",")));
+
+				// 按原顺序保留交集
+				List<String> intersectionList = permissionList.stream()
+						.filter(maxIdsSet::contains)
+						.collect(Collectors.toList());
+
+				String intersectionIds = String.join(",", intersectionList);
+
+				// 根据 permissionIds 查询 SysPermission
+				LambdaQueryWrapper<SysPermission> query = new LambdaQueryWrapper<>();
+				query.eq(SysPermission::getDelFlag, CommonConstant.DEL_FLAG_0)
+						.orderByAsc(SysPermission::getSortNo);
+				this.sysRolePermissionService.saveRolePermission(roleId, intersectionIds, lastPermissionIds);
+			}else {
+				this.sysRolePermissionService.saveRolePermission(roleId, permissionIds, lastPermissionIds);
 			}
-			// 查询 sys_tenant_pack 中符合条件的 id 列表
-			List<String> tenantPackIds = sysTenantPackService.lambdaQuery()
-					.eq(SysTenantPack::getTenantId, roleTenantId)
-					.eq(SysTenantPack::getStatus, 1)
-					.list()
-					.stream()
-					.map(SysTenantPack::getId)
-					.collect(Collectors.toList());
-			// 查询 packPermission
-			List<SysPackPermission> packPermissions = sysPackPermissionService.lambdaQuery()
-					.eq(SysPackPermission::getPackId, tenantPackIds.get(0))
-					.list();
 
-			// 提取 permissionId 列表
-			List<String> maxPermissionIds = packPermissions.stream()
-					.map(SysPackPermission::getPermissionId)
-					.filter(Objects::nonNull)
-					.collect(Collectors.toList());
-			// 根据 permissionIds 查询 SysPermission
-			LambdaQueryWrapper<SysPermission> maxQuery = new LambdaQueryWrapper<>();
-			maxQuery.eq(SysPermission::getDelFlag, CommonConstant.DEL_FLAG_0)
-					.orderByAsc(SysPermission::getSortNo);
-
-			if (!maxPermissionIds.isEmpty()) {
-				maxQuery.in(SysPermission::getId, maxPermissionIds);
-			}
-			List<SysPermission> maxList = sysPermissionService.list(maxQuery);
-			// 取出权限ids
-			List<String> ids = new ArrayList<>();
-			for (SysPermission sysPer : maxList) {
-				ids.add(sysPer.getId());
-			}
-			//4.ids修改为[1,2]的格式
-			String maxIds = String.join(",", ids);
-			//5.过滤掉intersectionIds中不在maxIds中的数据
-			// 计算 intersectionIds 和 maxIds 的交集
-			List<String> permissionList = Arrays.asList(permissionIds.split(","));
-			Set<String> maxIdsSet = new HashSet<>(Arrays.asList(maxIds.split(",")));
-
-			// 按原顺序保留交集
-			List<String> intersectionList = permissionList.stream()
-					.filter(maxIdsSet::contains)
-					.collect(Collectors.toList());
-
-			String intersectionIds = String.join(",", intersectionList);
-
-			// 根据 permissionIds 查询 SysPermission
-			LambdaQueryWrapper<SysPermission> query = new LambdaQueryWrapper<>();
-			query.eq(SysPermission::getDelFlag, CommonConstant.DEL_FLAG_0)
-					.orderByAsc(SysPermission::getSortNo);
-			this.sysRolePermissionService.saveRolePermission(roleId, intersectionIds, lastPermissionIds);
 			//update-begin---author:wangshuai ---date:20220316  for：[VUEN-234]用户管理角色授权添加敏感日志------------
             LoginUser loginUser = (LoginUser) SecurityUtils.getSubject().getPrincipal();
 			baseCommonService.addLog("修改角色ID: "+roleId+" 的权限配置，操作人： " +loginUser.getUsername() ,CommonConstant.LOG_TYPE_2, 2);

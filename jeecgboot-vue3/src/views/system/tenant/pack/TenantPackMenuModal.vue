@@ -6,7 +6,7 @@
       </template>
     </BasicForm>
   </BasicModal>
-  <TenantPackUserMenu @register="rolePermissionDrawer"  @getDetailInfo="getDetailPermission" :zIndex="2000" :getContainer="() => document.body"/>
+  <TenantPackUserMenu @register="rolePermissionDrawer"  @getDetailInfo="getDetailPermission" :zIndex="2000" />
 </template>
 <script lang="ts" setup name="tenant-pack-menu-modal">
   import { ref, computed, unref } from 'vue';

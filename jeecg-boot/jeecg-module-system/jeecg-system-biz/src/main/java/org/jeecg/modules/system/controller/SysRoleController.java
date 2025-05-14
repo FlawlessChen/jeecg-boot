@@ -545,80 +545,104 @@ public class SysRoleController {
 		List<String> ids = new ArrayList<>();
 
 		try {
-			String roleTenantId = tenantId;
-
-			// 查询 sys_tenant_pack 中符合条件的 id 列表
-			List<String> tenantPackIds = sysTenantPackService.lambdaQuery()
-					.eq(SysTenantPack::getTenantId, roleTenantId)
-					.eq(SysTenantPack::getStatus, 1)
-					.list()
-					.stream()
-					.map(SysTenantPack::getId)
-					.collect(Collectors.toList());
-
-			if (tenantPackIds != null && !tenantPackIds.isEmpty()) {
-				// 查询 packPermission  目前只取了第一个产品包
-				List<SysPackPermission> packPermissions = sysPackPermissionService.lambdaQuery()
-						.eq(SysPackPermission::getPackId, tenantPackIds.get(0))
-						.list();
-
-				// 提取 permissionId 列表
-				List<String> permissionIds = packPermissions.stream()
-						.map(SysPackPermission::getPermissionId)
-						.filter(Objects::nonNull)
-						.collect(Collectors.toList());
-
-				// 根据 permissionIds 查询 SysPermission
+			//这边需考虑不走多租户隔离的情况
+			// 不走多租户隔离
+			if (MybatisPlusSaasConfig.OPEN_SYSTEM_TENANT_CONTROL== false) {
+				// 直接查询所有权限，不考虑租户隔离
 				LambdaQueryWrapper<SysPermission> query = new LambdaQueryWrapper<>();
 				query.eq(SysPermission::getDelFlag, CommonConstant.DEL_FLAG_0)
 						.orderByAsc(SysPermission::getSortNo);
 
-				if (!permissionIds.isEmpty()) {
-					query.in(SysPermission::getId, permissionIds);
-				} else {
-					// 如果没有任何权限，直接返回空数据
-					Map<String,Object> resMap = new HashMap<>(5);
-					resMap.put("treeList", new ArrayList<>());
-					resMap.put("ids", new ArrayList<>());
-					result.setResult(resMap);
-					result.setSuccess(true);
-					return result;
-				}
-
 				List<SysPermission> list = sysPermissionService.list(query);
 
-				// 取出权限ids
 				for (SysPermission sysPer : list) {
 					ids.add(sysPer.getId());
 				}
 
-				// 获取 tree 数据
 				List<TreeModel> treeList = new ArrayList<>();
 				getTreeModelList(treeList, list, null);
 
-				// 交集操作
-				if (result.getResult() != null && result.getResult().get("ids") != null) {
-					// 获取之前的 ids 和当前查询结果的 ids
-					List<String> existingIds = (List<String>) result.getResult().get("ids");
-					ids = existingIds.stream()
-							.filter(ids::contains)  // 取交集
-							.collect(Collectors.toList());
-				}
-
-				Map<String,Object> resMap = new HashMap<>(5);
-				// 全部树节点数据
+				Map<String, Object> resMap = new HashMap<>(5);
 				resMap.put("treeList", treeList);
-				// 交集 ids
 				resMap.put("ids", ids);
 				result.setResult(resMap);
 				result.setSuccess(true);
-			} else {
-				// 没有租户套餐
-				Map<String,Object> resMap = new HashMap<>(5);
-				resMap.put("treeList", new ArrayList<>());
-				resMap.put("ids", new ArrayList<>());
-				result.setResult(resMap);
-				result.setSuccess(true);
+
+			} else {//走多租户时
+				String roleTenantId = tenantId;
+				// 查询 sys_tenant_pack 中符合条件的 id 列表
+				List<String> tenantPackIds = sysTenantPackService.lambdaQuery()
+						.eq(SysTenantPack::getTenantId, roleTenantId)
+						.eq(SysTenantPack::getStatus, 1)
+						.list()
+						.stream()
+						.map(SysTenantPack::getId)
+						.collect(Collectors.toList());
+
+				if (tenantPackIds != null && !tenantPackIds.isEmpty()) {
+					// 查询 packPermission  目前只取了第一个产品包
+					List<SysPackPermission> packPermissions = sysPackPermissionService.lambdaQuery()
+							.eq(SysPackPermission::getPackId, tenantPackIds.get(0))
+							.list();
+
+					// 提取 permissionId 列表
+					List<String> permissionIds = packPermissions.stream()
+							.map(SysPackPermission::getPermissionId)
+							.filter(Objects::nonNull)
+							.collect(Collectors.toList());
+
+					// 根据 permissionIds 查询 SysPermission
+					LambdaQueryWrapper<SysPermission> query = new LambdaQueryWrapper<>();
+					query.eq(SysPermission::getDelFlag, CommonConstant.DEL_FLAG_0)
+							.orderByAsc(SysPermission::getSortNo);
+
+					if (!permissionIds.isEmpty()) {
+						query.in(SysPermission::getId, permissionIds);
+					} else {
+						// 如果没有任何权限，直接返回空数据
+						Map<String, Object> resMap = new HashMap<>(5);
+						resMap.put("treeList", new ArrayList<>());
+						resMap.put("ids", new ArrayList<>());
+						result.setResult(resMap);
+						result.setSuccess(true);
+						return result;
+					}
+
+					List<SysPermission> list = sysPermissionService.list(query);
+
+					// 取出权限ids
+					for (SysPermission sysPer : list) {
+						ids.add(sysPer.getId());
+					}
+
+					// 获取 tree 数据
+					List<TreeModel> treeList = new ArrayList<>();
+					getTreeModelList(treeList, list, null);
+
+					// 交集操作
+					if (result.getResult() != null && result.getResult().get("ids") != null) {
+						// 获取之前的 ids 和当前查询结果的 ids
+						List<String> existingIds = (List<String>) result.getResult().get("ids");
+						ids = existingIds.stream()
+								.filter(ids::contains)  // 取交集
+								.collect(Collectors.toList());
+					}
+
+					Map<String, Object> resMap = new HashMap<>(5);
+					// 全部树节点数据
+					resMap.put("treeList", treeList);
+					// 交集 ids
+					resMap.put("ids", ids);
+					result.setResult(resMap);
+					result.setSuccess(true);
+				} else {
+					// 没有租户套餐
+					Map<String, Object> resMap = new HashMap<>(5);
+					resMap.put("treeList", new ArrayList<>());
+					resMap.put("ids", new ArrayList<>());
+					result.setResult(resMap);
+					result.setSuccess(true);
+				}
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
