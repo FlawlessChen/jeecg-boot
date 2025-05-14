@@ -1,12 +1,12 @@
 <template>
-  <BasicModal v-bind="$attrs" :zIndex="1000" @register="registerModal" :title="title" @ok="handleSubmit" width="800px" destroyOnClose>
+  <BasicModal v-bind="$attrs" @register="registerModal" :title="title" @ok="handleSubmit" width="800px" destroyOnClose>
     <BasicForm @register="registerForm" >
       <template #permissionSlot="{ }">
-        <a-button type="primary" @click="openPermissionDrawer()">设置权限</a-button>
+        <a-button type="primary" ghost @click="openPermissionDrawer()">设置权限</a-button>
       </template>
     </BasicForm>
   </BasicModal>
-  <TenantPackUserMenu @register="rolePermissionDrawer"  @getDetailInfo="getDetailPermission"/>
+  <TenantPackUserMenu @register="rolePermissionDrawer"  @getDetailInfo="getDetailPermission" :zIndex="2000" :getContainer="() => document.body"/>
 </template>
 <script lang="ts" setup name="tenant-pack-menu-modal">
   import { ref, computed, unref } from 'vue';

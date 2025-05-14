@@ -1,5 +1,5 @@
 <template>
-  <BasicDrawer v-bind="$attrs" :zIndex="2000"  @register="registerDrawer" width="650px"
+  <BasicDrawer v-bind="$attrs" @register="registerDrawer" width="650px"
   destroyOnClose showFooter>
   <!-- zindex为优先级，其中model默认值为1000，将此页面的drawer设置为2000，实现优先展示 -->
     <template #title>
